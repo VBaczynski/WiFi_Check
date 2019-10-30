@@ -6,6 +6,8 @@
 # Author:    Kevin Reed (Dweeber)
 #            dweeber.dweebs@gmail.com
 # Project:   Raspberry Pi Stuff
+# Edited by: Viacheslav Baczynski
+#            https://github.com/VBaczynski/WiFi_Check
 #
 # Copyright: Copyright (c) 2012 Kevin Reed <kreed@tnet.com>
 #            https://github.com/dweeber/WiFi_Check
@@ -34,13 +36,14 @@
 # Settings
 # Where and what you want to call the Lockfile
 lockfile='/var/run/WiFi_Check.pid'
+logfile='/var/log/netmon.log'
 # Which Interface do you want to check/fix
 wlan='wlan0'
 ##################################################################
 echo
 echo "Starting WiFi check for $wlan"
 date
-echo 
+echo
 
 # Check to see if there is a lock file
 if [ -e $lockfile ]; then
@@ -62,21 +65,34 @@ echo $$ > $lockfile
 
 # We can perform check
 echo "Performing Network check for $wlan"
-if ifconfig $wlan | grep -q "inet addr:" ; then
-    echo "Network is Okay"
+if ifconfig $wlan | grep -q "inet " ; then
+    echo "Network is Okay, performing ping test"
+    # Note: you can replace 1.1.1.1 with IP-address of your router
+    pingtest=`ping -n -q -c1 1.1.1.1 >/dev/null 2>/dev/null`
+    if [ $? -ne 0 ]; then
+        echo "Network connection down! Attempting reconnection."
+        ifdown $wlan
+        sleep 5
+        ifup --force $wlan
+        ifconfig $wlan | grep "inet "
+        echo "IP was unreachable. Network restarted @ `date`" > $logfile
+    else
+        echo "Ping test is Okay"
+    fi
 else
     echo "Network connection down! Attempting reconnection."
     ifdown $wlan
     sleep 5
     ifup --force $wlan
-    ifconfig $wlan | grep "inet addr"
+    ifconfig $wlan | grep "inet "
+    echo "Network restarted @ `date`" > $logfile
 fi
 
-echo 
-echo "Current Setting:"
-ifconfig $wlan | grep "inet addr:"
 echo
- 
+echo "Current Setting:"
+ifconfig $wlan | grep "inet "
+echo
+
 # Check is complete, Remove Lock file and exit
 #echo "process is complete, removing lockfile"
 rm $lockfile
