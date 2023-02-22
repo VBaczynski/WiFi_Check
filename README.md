@@ -1,4 +1,4 @@
-WiFi_Check
+# WiFi_Check
 
 Purpose:
 Script checks to see if WiFi has a network IP and if not
